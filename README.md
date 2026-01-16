@@ -7,7 +7,7 @@ This repository hosts the `umbra-yurei/brew` tap for distributing Umbra Yurei CL
 Add the tap and install the `cruma-tunnel` formula:
 
 ```bash
-brew tap umbra-yurei/brew
-brew install umbra-yurei/brew/cruma-tunnel
+brew tap umbra-yurei/homebrew-repo
+brew install uumbra-yurei/homebrew-repo/cruma-tunnel
 ```
 
