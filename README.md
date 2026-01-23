@@ -11,3 +11,7 @@ brew tap umbra-yurei/brew
 brew install umbra-yurei/brew/cruma-tunnel
 ```
 
+Upgrades are done using:
+```bash
+brew upgrade umbra-yurei/brew/cruma-tunnel
+```
