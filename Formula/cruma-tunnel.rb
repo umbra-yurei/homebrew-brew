@@ -1,6 +1,6 @@
 class CrumaTunnel < Formula
   desc "cruma-tunnel CLI"
-  homepage "cruma.io"
+  homepage "https://cruma.io"
   version "0.3.0-beta.1"
 
   url "https://files.cruma.io/files/tunnel-agent%2Fv0.3.0-beta.1%2Faarch64-apple-darwin%2Fcruma-tunnel"
@@ -9,6 +9,11 @@ class CrumaTunnel < Formula
   def install
     bin.install "cruma-tunnel"
   end
+  def post_install
+    system "/usr/bin/xattr", "-drs", "com.apple.quarantine", bin/"cruma-tunnel"
+    system "/usr/bin/codesign", "--force", "--deep", "-s", "-", bin/"cruma-tunnel"
+  end
+
   test do
     assert_match "cruma-tunnel", shell_output("#{bin}/cruma-tunnel --version")
   end

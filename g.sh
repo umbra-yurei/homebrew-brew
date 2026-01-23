@@ -1,0 +1,1 @@
+python generate_formula.py --name cruma-tunnel --version 0.3.0-beta.1 --url https://files.cruma.io/files/tunnel-agent%2Fv0.3.0-beta.1%2Faarch64-apple-darwin%2Fcruma-tunnel --binary-name "cruma-tunnel" --homepage https://cruma.io

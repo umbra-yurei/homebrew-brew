@@ -137,9 +137,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--ad-hoc-sign",
+        dest="ad_hoc_sign",
         action="store_true",
-        help="Add a post_install hook that clears quarantine and ad-hoc signs the binary",
+        help="(default) Add a post_install hook that clears quarantine and ad-hoc signs the binary",
     )
+    parser.add_argument(
+        "--no-ad-hoc-sign",
+        dest="ad_hoc_sign",
+        action="store_false",
+        help="Skip the post_install hook that clears quarantine and ad-hoc signs the binary",
+    )
+    parser.set_defaults(ad_hoc_sign=True)
     return parser.parse_args()
 
 
