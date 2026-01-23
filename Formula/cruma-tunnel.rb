@@ -1,10 +1,10 @@
 class CrumaTunnel < Formula
   desc "cruma-tunnel CLI"
-  homepage "https://example.com"
-  version "0.3.0-alpha.10"
+  homepage "cruma.io"
+  version "v0.3.0-beta.1"
 
-  url "https://files.cruma.io/files/tunnel-agent%2Fv0.3.0-alpha.10%2Faarch64-apple-darwin%2Fcruma-tunnel"
-  sha256 "9e8dd454defed6b14647bcff51a51a3be84bfdbe605bdc0ec714c6892f2d4310"
+  url "https://files.cruma.io/files/tunnel-agent%2Fv0.3.0-beta.1%2Faarch64-apple-darwin%2Fcruma-tunnel"
+  sha256 "0f05dacc474df183d0f277a7351d8390158867ca74b1bc28c8f1e479d15ac380"
 
   def install
     bin.install "cruma-tunnel"
