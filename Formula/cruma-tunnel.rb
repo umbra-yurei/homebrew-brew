@@ -10,6 +10,7 @@ class CrumaTunnel < Formula
     bin.install "cruma-tunnel"
   end
   def post_install
+    system "/bin/chmod", "755", bin/"cruma-tunnel"
     system "/usr/bin/xattr", "-drs", "com.apple.quarantine", bin/"cruma-tunnel"
     system "/usr/bin/codesign", "--force", "--deep", "-s", "-", bin/"cruma-tunnel"
   end

@@ -86,6 +86,7 @@ def render_formula(
     if ad_hoc_sign:
         post_install_block = f"""
   def post_install
+    system "/bin/chmod", "755", bin/"{binary_name}"
     system "/usr/bin/xattr", "-drs", "com.apple.quarantine", bin/"{binary_name}"
     system "/usr/bin/codesign", "--force", "--deep", "-s", "-", bin/"{binary_name}"
   end
