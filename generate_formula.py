@@ -9,7 +9,7 @@ Example:
         --url https://files.cruma.io/path/to/binary \\
         --desc "Cruma tunnel agent" \\
         --homepage https://cruma.io \\
-        --binary-name cruma-tunnel \\
+        --binary-name cruma \\
         --nounzip \\
         --ad-hoc-sign
 """
@@ -33,7 +33,7 @@ def kebab_case(name: str) -> str:
 
 
 def class_name(name: str) -> str:
-    """Transform a CLI name like 'cruma-tunnel' into a Homebrew formula class name."""
+    """Transform a CLI name like 'cruma' into a Homebrew formula class name."""
     tokens = re.split(r"[-_\s]+", name.strip())
     pretty = "".join(token.capitalize() for token in tokens if token)
     if not pretty:
@@ -117,7 +117,7 @@ end
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate a Homebrew formula for a binary artifact.")
-    parser.add_argument("--name", required=True, help="Formula name (e.g. cruma-tunnel)")
+    parser.add_argument("--name", required=True, help="Formula name (e.g. cruma)")
     parser.add_argument("--version", required=True, help="Semantic version or git tag")
     parser.add_argument("--url", required=True, help="Download URL to the binary artifact")
     parser.add_argument("--desc", default="", help="One-line description for the formula")
