@@ -81,8 +81,6 @@ def render_cask(
   desc "{desc}"
   homepage "{homepage}"
 
-  conflicts_with formula: "{cask_name}"
-
   {app_clause}
 
   # Symlinks the binary into $(brew --prefix)/bin so `{binary_target}` works in the terminal

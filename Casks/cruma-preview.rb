@@ -8,8 +8,6 @@ cask "cruma-preview" do
   desc "Cruma tunnel agent (preview)"
   homepage "https://cruma.io"
 
-  conflicts_with formula: "cruma-preview"
-
   app "Cruma.app", target: "Cruma Preview.app"
 
   # Symlinks the binary into $(brew --prefix)/bin so `cruma-preview` works in the terminal
