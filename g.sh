@@ -120,7 +120,7 @@ if [[ "${GENERATE_LINUX}" == true ]]; then
         --name "${NAME}" \
         --version "${VERSION}" \
         --linux-arm-url "${BASE_URL}/aarch64-unknown-linux-musl/cruma" \
-        --linux-x86-url "${BASE_URL}/x86_64-unknown-linux-musl/cruma" \
+        --linux-x86-url "${BASE_URL}/x86_64-unknown-linux-gnu/cruma" \
         --desc "${DESC}" \
         --homepage "https://cruma.io" \
         --binary-name "cruma" \

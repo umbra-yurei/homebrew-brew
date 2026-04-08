@@ -205,8 +205,8 @@ def parse_args() -> argparse.Namespace:
     parser.set_defaults(ad_hoc_sign=True)
 
     # Linux multi-arch mode
-    parser.add_argument("--linux-arm-url", help="URL for the aarch64-unknown-linux-musl binary")
-    parser.add_argument("--linux-x86-url", help="URL for the x86_64-unknown-linux-musl binary")
+    parser.add_argument("--linux-arm-url", help="URL for the aarch64 Linux binary")
+    parser.add_argument("--linux-x86-url", help="URL for the x86_64 Linux binary")
 
     return parser.parse_args()
 
