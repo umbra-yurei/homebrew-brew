@@ -1,14 +1,14 @@
 cask "cruma-preview" do
   version "1.0.0-RC7"
 
-  url "https://files.cruma.io/files/tunnel-agent/v1.0.0-RC7/aarch64-apple-darwin/cruma.dmg"
-  sha256 "dbf4630cbcfcd81979bf8f56e2a1181db4a02d0807a4d9547d739b3a9e2d5a3e"
+  url "https://files.cruma.io/files/tunnel-agent/v1.0.0-RC7/aarch64-apple-darwin/cruma-preview.dmg"
+  sha256 "0cf13ed774f508e7bcc8a9b236c1acf7dd25563362adbd9970fb65ab7231b284"
 
   name "Cruma Preview"
   desc "Cruma tunnel agent (preview)"
   homepage "https://cruma.io"
 
-  app "Cruma.app", target: "Cruma Preview.app"
+  app "Cruma Preview.app"
 
   # Symlinks the binary into $(brew --prefix)/bin so `cruma-preview` works in the terminal
   binary "#{appdir}/Cruma Preview.app/Contents/MacOS/cruma", target: "cruma-preview"
