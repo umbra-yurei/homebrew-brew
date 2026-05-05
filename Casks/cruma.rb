@@ -1,8 +1,8 @@
 cask "cruma" do
-  version "1.0.0-RC7"
+  version "1.0.0"
 
-  url "https://files.cruma.io/files/tunnel-agent/v1.0.0-RC7/aarch64-apple-darwin/cruma.dmg"
-  sha256 "dbf4630cbcfcd81979bf8f56e2a1181db4a02d0807a4d9547d739b3a9e2d5a3e"
+  url "https://files.cruma.io/files/tunnel-agent/v1.0.0/aarch64-apple-darwin/cruma.dmg"
+  sha256 "e49653b8dbb33e7d52488cc104b7b6d6a737d12cae44af5ab6fe887fd68d8f4a"
 
   name "Cruma"
   desc "Cruma tunnel agent"
