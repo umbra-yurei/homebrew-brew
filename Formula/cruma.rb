@@ -10,7 +10,7 @@ class Cruma < Formula
     end
     on_intel do
       url "https://files.cruma.io/files/tunnel-agent/v1.0.0/x86_64-unknown-linux-gnu/cruma"
-      sha256 "7b00c905d335c98c5650c428dd2d368849ca0aee3aaf70c52ff6d269269465cc"
+      sha256 "488a70d01ae56fa3192aa3e0d7ae2aadd36ff46c4d9ccdd8df728b7f889112de"
     end
   end
 
