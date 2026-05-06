@@ -1,8 +1,8 @@
 cask "cruma-preview" do
-  version "1.0.0-RC7"
+  version "1.0.0"
 
-  url "https://files.cruma.io/files/tunnel-agent/v1.0.0-RC7/aarch64-apple-darwin/cruma-preview.dmg"
-  sha256 "0cf13ed774f508e7bcc8a9b236c1acf7dd25563362adbd9970fb65ab7231b284"
+  url "https://files.cruma.io/files/tunnel-agent/v1.0.0/aarch64-apple-darwin/cruma-preview.dmg"
+  sha256 "3382e2e80eda5da60aff21433b11b4d7505ad6fe2b2287d7d9c13c33518f9a60"
 
   name "Cruma Preview"
   desc "Cruma tunnel agent (preview)"
