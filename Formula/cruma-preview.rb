@@ -6,11 +6,11 @@ class CrumaPreview < Formula
   on_linux do
     on_arm do
       url "https://files.cruma.io/files/tunnel-agent/v1.0.2/aarch64-unknown-linux-gnu/cruma"
-      sha256 "8a1f5d98c246818a8cd9491a21fe2283a9917bb031c689ea3a52e38398762998"
+      sha256 "6940e2c6ebc8a70dd1e3424a3fb5ebf948b3b57efdb2760b79556769377f53c3"
     end
     on_intel do
       url "https://files.cruma.io/files/tunnel-agent/v1.0.2/x86_64-unknown-linux-gnu/cruma"
-      sha256 "38935b9072c2ba22112843a81f0933b4f09b4fada12e890d067d2a912d14b200"
+      sha256 "2c8dccb73fade5814815eabbe81774322d884af9900cc1724787adba49c331ca"
     end
   end
 
