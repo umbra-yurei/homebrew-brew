@@ -20,8 +20,11 @@ import hashlib
 import os
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
+import urllib.parse
 import urllib.request
 
 
@@ -31,7 +34,9 @@ def kebab_case(name: str) -> str:
 
 
 def download_file(url: str) -> pathlib.Path:
-    tmp_fd, tmp_path = tempfile.mkstemp(prefix="cask-asset-")
+    parsed = urllib.parse.urlparse(url)
+    suffix = pathlib.Path(parsed.path).suffix or ".bin"
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="cask-asset-", suffix=suffix)
     os.close(tmp_fd)
     with urllib.request.urlopen(url) as response, open(tmp_path, "wb") as tmp_file:
         while True:
@@ -50,6 +55,76 @@ def hash_file(path: pathlib.Path) -> str:
     return sha256.hexdigest()
 
 
+def run_checked(cmd: list[str], *, cwd: pathlib.Path | None = None) -> str:
+    try:
+        completed = subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        details = (exc.stdout or "") + (exc.stderr or "")
+        raise RuntimeError(
+            f"command failed ({exc.returncode}): {' '.join(cmd)}\n{details}".rstrip()
+        ) from exc
+    return completed.stdout + completed.stderr
+
+
+def run_spctl_open_assess(dmg_path: pathlib.Path) -> None:
+    try:
+        print(run_checked(["spctl", "--assess", "--type", "open", "-vv", str(dmg_path)]).strip())
+    except RuntimeError as exc:
+        message = str(exc)
+        if "source=Insufficient Context" not in message:
+            raise
+        print("spctl open assessment returned 'Insufficient Context' for the downloaded DMG; continuing with stapler and mounted app verification.")
+        print(message)
+
+
+def verify_macos_artifact(dmg_path: pathlib.Path, app_name: str) -> None:
+    required_tools = ["spctl", "xcrun", "hdiutil", "codesign"]
+    missing = [tool for tool in required_tools if shutil.which(tool) is None]
+    if missing:
+        raise RuntimeError(f"missing required macOS verification tools: {', '.join(missing)}")
+
+    print("Verifying notarized DMG with Gatekeeper...")
+    run_spctl_open_assess(dmg_path)
+    print(run_checked(["xcrun", "stapler", "validate", str(dmg_path)]).strip())
+
+    with tempfile.TemporaryDirectory(prefix="cruma-cask-mount-") as mount_dir:
+        try:
+            print("Mounting DMG for app verification...")
+            print(
+                run_checked(
+                    [
+                        "hdiutil",
+                        "attach",
+                        "-readonly",
+                        "-nobrowse",
+                        "-mountpoint",
+                        mount_dir,
+                        str(dmg_path),
+                    ]
+                ).strip()
+            )
+            app_path = pathlib.Path(mount_dir) / app_name
+            if not app_path.exists():
+                raise RuntimeError(f"expected app bundle not found in DMG: {app_path}")
+
+            print("Verifying app signature inside mounted DMG...")
+            print(run_checked(["codesign", "--verify", "--deep", "--strict", "--verbose=2", str(app_path)]).strip())
+            print(run_checked(["spctl", "--assess", "-vv", str(app_path)]).strip())
+        finally:
+            subprocess.run(
+                ["hdiutil", "detach", mount_dir],
+                check=False,
+                text=True,
+                capture_output=True,
+            )
+
+
 def render_cask(
     cask_name: str,
     version: str,
@@ -61,6 +136,7 @@ def render_cask(
     binary_target: str,
     desc: str,
     homepage: str,
+    clear_quarantine: bool,
 ) -> str:
     installed_app_name = app_target or app_name
     binary_path = f"#{{appdir}}/{installed_app_name}/Contents/MacOS/{binary_name}"
@@ -70,6 +146,28 @@ def render_cask(
     binary_clause = f'binary "{binary_path}"'
     if binary_target != binary_name:
         binary_clause = f'binary "{binary_path}", target: "{binary_target}"'
+
+    postflight = ""
+    if clear_quarantine:
+        postflight = f"""
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-drs", "com.apple.quarantine", "#{{appdir}}/{installed_app_name}"]
+    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+                   args: ["-f", "#{{appdir}}/{installed_app_name}"]
+    system_command "/usr/bin/mdimport",
+                   args: ["#{{appdir}}/{installed_app_name}"]
+  end
+"""
+    else:
+        postflight = f"""
+  postflight do
+    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+                   args: ["-f", "#{{appdir}}/{installed_app_name}"]
+    system_command "/usr/bin/mdimport",
+                   args: ["#{{appdir}}/{installed_app_name}"]
+  end
+"""
 
     cask = f"""cask "{cask_name}" do
   version "{version}"
@@ -85,15 +183,7 @@ def render_cask(
 
   # Symlinks the binary into $(brew --prefix)/bin so `{binary_target}` works in the terminal
   {binary_clause}
-
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-drs", "com.apple.quarantine", "#{{appdir}}/{installed_app_name}"]
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
-                   args: ["-f", "#{{appdir}}/{installed_app_name}"]
-    system_command "/usr/bin/mdimport",
-                   args: ["#{{appdir}}/{installed_app_name}"]
-  end
+{postflight}
 end
 """
     return "\n".join(line.rstrip() for line in cask.strip("\n").splitlines()) + "\n"
@@ -121,6 +211,16 @@ def parse_args() -> argparse.Namespace:
         default="Casks",
         help="Directory where the cask file should be written (default: Casks)",
     )
+    parser.add_argument(
+        "--skip-verify",
+        action="store_true",
+        help="Skip macOS Gatekeeper/signature verification of the downloaded DMG before writing the cask",
+    )
+    parser.add_argument(
+        "--allow-quarantine-clear",
+        action="store_true",
+        help="Add an explicit postflight xattr quarantine-clear fallback to the generated cask",
+    )
     return parser.parse_args()
 
 
@@ -142,6 +242,9 @@ def main() -> int:
     artifact_path = download_file(args.url)
     sha256 = hash_file(artifact_path)
 
+    if sys.platform == "darwin" and not args.skip_verify:
+        verify_macos_artifact(artifact_path, args.app_name)
+
     contents = render_cask(
         cask_name=args.name,
         version=args.version,
@@ -153,6 +256,7 @@ def main() -> int:
         binary_target=binary_target,
         desc=desc,
         homepage=args.homepage,
+        clear_quarantine=args.allow_quarantine_clear,
     )
 
     cask_file.write_text(contents)
