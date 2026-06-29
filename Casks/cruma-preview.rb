@@ -21,4 +21,5 @@ cask "cruma-preview" do
     system_command "/usr/bin/mdimport",
                    args: ["#{appdir}/Cruma Preview.app"]
   end
+
 end

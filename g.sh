@@ -4,22 +4,26 @@ set -euo pipefail
 # Generates the Homebrew formula (Linux) and/or cask (macOS) for a given version.
 # Artifacts must already be uploaded to files.cruma.io before running this.
 #
-# Usage: ./g.sh <version> [--preview] [--os macos|linux|all]
+# Usage: ./g.sh <version> [--preview] [--os macos|linux|all] [--skip-macos-verify] [--allow-quarantine-clear]
 # Example: ./g.sh 0.3.0-beta.3 --preview --os macos
 
 usage() {
     cat <<'EOF'
-Usage: ./g.sh <version> [--preview] [--os macos|linux|all]
+Usage: ./g.sh <version> [--preview] [--os macos|linux|all] [--skip-macos-verify] [--allow-quarantine-clear]
 
 Options:
   --preview      Generate preview artifacts as cruma-preview
   --os <value>   Limit output to macos, linux, or all (default: all)
+  --skip-macos-verify
+                 Skip Gatekeeper/signature verification of the remote macOS DMG
+  --allow-quarantine-clear
+                 Add an explicit unsafe xattr quarantine-clear fallback to the generated cask
   --help         Show this help text
 EOF
 }
 
 if [[ $# -eq 0 ]]; then
-    echo "Usage: ./g.sh <version> [--preview] [--os macos|linux|all]" >&2
+    echo "Usage: ./g.sh <version> [--preview] [--os macos|linux|all] [--skip-macos-verify] [--allow-quarantine-clear]" >&2
     exit 1
 fi
 
@@ -34,6 +38,8 @@ shift
 PREVIEW=false
 GENERATE_MACOS=true
 GENERATE_LINUX=true
+SKIP_MACOS_VERIFY=false
+ALLOW_QUARANTINE_CLEAR=false
 
 set_os_selection() {
     case "$1" in
@@ -71,6 +77,14 @@ while [[ $# -gt 0 ]]; do
             }
             set_os_selection "$2"
             shift 2
+            ;;
+        --skip-macos-verify)
+            SKIP_MACOS_VERIFY=true
+            shift
+            ;;
+        --allow-quarantine-clear)
+            ALLOW_QUARANTINE_CLEAR=true
+            shift
             ;;
         --help|-h)
             usage
@@ -135,16 +149,25 @@ fi
 if [[ "${GENERATE_MACOS}" == true ]]; then
     echo ""
     echo "[macos] Generating Casks/${NAME}.rb..."
-    python3 generate_cask.py \
-        --name "${NAME}" \
-        --version "${VERSION}" \
-        --url "${BASE_URL}/aarch64-apple-darwin/${CASK_DMG_NAME}" \
-        --app-name "${CASK_APP_NAME}" \
-        --app-target "${CASK_APP_TARGET}" \
-        --binary-name "cruma" \
-        --binary-target "${CASK_BINARY_TARGET}" \
-        --desc "${DESC}" \
+    generate_cask_args=(
+        --name "${NAME}"
+        --version "${VERSION}"
+        --url "${BASE_URL}/aarch64-apple-darwin/${CASK_DMG_NAME}"
+        --app-name "${CASK_APP_NAME}"
+        --app-target "${CASK_APP_TARGET}"
+        --binary-name "cruma"
+        --binary-target "${CASK_BINARY_TARGET}"
+        --desc "${DESC}"
         --homepage "https://cruma.io"
+    )
+    if [[ "${SKIP_MACOS_VERIFY}" == true ]]; then
+        generate_cask_args+=(--skip-verify)
+    fi
+    if [[ "${ALLOW_QUARANTINE_CLEAR}" == true ]]; then
+        generate_cask_args+=(--allow-quarantine-clear)
+    fi
+    python3 generate_cask.py \
+        "${generate_cask_args[@]}"
 fi
 
 if [[ "${PREVIEW}" == false && "${GENERATE_LINUX}" == true && -f "Formula/cruma-tunnel.rb" ]]; then
