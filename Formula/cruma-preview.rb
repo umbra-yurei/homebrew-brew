@@ -1,16 +1,16 @@
 class CrumaPreview < Formula
   desc "Cruma tunnel agent (preview)"
   homepage "https://cruma.io"
-  version "1.0.3"
+  version "1.0.4"
 
   on_linux do
     on_arm do
-      url "https://files.cruma.io/files/tunnel-agent/v1.0.3/aarch64-unknown-linux-gnu/cruma"
-      sha256 "167c8b80764fa20cb5b68c0617396ab55836795d9aaffd7dbf3497c755547c79"
+      url "https://files.cruma.io/files/tunnel-agent/v1.0.4/aarch64-unknown-linux-gnu/cruma"
+      sha256 "cdb69546acd49c6f43a559cf5c483d17603d5b7d5abd9b85a7bf6f6fddb54537"
     end
     on_intel do
-      url "https://files.cruma.io/files/tunnel-agent/v1.0.3/x86_64-unknown-linux-gnu/cruma"
-      sha256 "b310fd00a8810d82544f76730fce45b533bfdd8aa68a371f057f686faf825f45"
+      url "https://files.cruma.io/files/tunnel-agent/v1.0.4/x86_64-unknown-linux-gnu/cruma"
+      sha256 "99d6988435087669d7944b2f2aa1c5c10b9575eb25499168ce527395863602bf"
     end
   end
 
