@@ -1,16 +1,16 @@
 class Cruma < Formula
   desc "Cruma tunnel agent"
   homepage "https://cruma.io"
-  version "1.0.12"
+  version "1.0.13"
 
   on_linux do
     on_arm do
-      url "https://files.cruma.io/files/tunnel-agent/v1.0.12/aarch64-unknown-linux-gnu/cruma"
-      sha256 "df5c349c21a2d06c71efcdc298aa0a8583bc520489602268ad3036645db3d718"
+      url "https://files.cruma.io/files/tunnel-agent/v1.0.13/aarch64-unknown-linux-gnu/cruma"
+      sha256 "8da32374b9ae9d78c08413cfa1f3d81db75ae43b57a8efa0cb25017e34c50a24"
     end
     on_intel do
-      url "https://files.cruma.io/files/tunnel-agent/v1.0.12/x86_64-unknown-linux-gnu/cruma"
-      sha256 "b69f70597f5f94b101a2545d1a108d40653e2eed7750b948a1ad116f646a7cc6"
+      url "https://files.cruma.io/files/tunnel-agent/v1.0.13/x86_64-unknown-linux-gnu/cruma"
+      sha256 "ec4eceed9f3f11d92070152d2e9ab6773c2b3fea4d94b1747b68197f1ab919ee"
     end
   end
 
