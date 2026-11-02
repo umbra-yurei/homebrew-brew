@@ -35,6 +35,28 @@ import tempfile
 import urllib.request
 
 
+# The Linux formula must install the GNU (GUI-capable) desktop build. The musl
+# builds are headless, and anything else on files.cruma.io (AppImages, server
+# artifacts) is not what `brew install cruma` promises, so only this exact
+# shape is accepted.
+LINUX_ARTIFACT_BASE = "https://files.cruma.io/files/tunnel-agent"
+LINUX_ARM_TARGET = "aarch64-unknown-linux-gnu"
+LINUX_X86_TARGET = "x86_64-unknown-linux-gnu"
+LINUX_ARTIFACT_FILE = "cruma"
+
+
+def expected_linux_url(version: str, target: str) -> str:
+    return f"{LINUX_ARTIFACT_BASE}/v{version}/{target}/{LINUX_ARTIFACT_FILE}"
+
+
+def check_linux_url(url: str, version: str, target: str) -> str | None:
+    """Return an error message unless `url` is the GNU artifact for `target`."""
+    expected = expected_linux_url(version, target)
+    if url != expected:
+        return f"Linux formula URL must be the GNU GUI artifact {expected}, got {url}"
+    return None
+
+
 def kebab_case(name: str) -> str:
     tokens = re.split(r"[\s_]+", name.strip().lower())
     return "-".join(filter(None, tokens))
@@ -231,6 +253,19 @@ def main() -> int:
     if linux_mode:
         if not args.linux_arm_url or not args.linux_x86_url:
             print("Error: --linux-arm-url and --linux-x86-url must both be provided.", file=sys.stderr)
+            return 1
+
+        errors = [
+            error
+            for error in (
+                check_linux_url(args.linux_arm_url, args.version, LINUX_ARM_TARGET),
+                check_linux_url(args.linux_x86_url, args.version, LINUX_X86_TARGET),
+            )
+            if error
+        ]
+        if errors:
+            for error in errors:
+                print(f"Error: {error}", file=sys.stderr)
             return 1
 
         print(f"Downloading Linux arm64 artifact from {args.linux_arm_url}...")
