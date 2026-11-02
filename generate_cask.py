@@ -33,11 +33,12 @@ import tempfile
 import urllib.parse
 import urllib.request
 
+from artifact_urls import ARTIFACT_BASE
+
 
 # Each architecture's DMG lives at exactly one place on files.cruma.io. Anything
 # else (the other architecture, another channel, another version) is refused
 # before anything is downloaded, so an arm64 DMG can never be offered to Intel Macs.
-ARTIFACT_BASE = "https://files.cruma.io/files/tunnel-agent"
 ARM_TARGET = "aarch64-apple-darwin"
 INTEL_TARGET = "x86_64-apple-darwin"
 
@@ -74,6 +75,8 @@ def macho_archs(path: pathlib.Path) -> set[str]:
             archs = set()
             for _ in range(count):
                 entry = handle.read(entry_size)
+                if len(entry) != entry_size:
+                    raise RuntimeError(f"truncated Mach-O architecture table: {path}")
                 (cpu_type,) = struct.unpack(">I", entry[:4])
                 archs.add(MACHO_CPU_TYPES.get(cpu_type, f"cputype-{cpu_type:#x}"))
             return archs

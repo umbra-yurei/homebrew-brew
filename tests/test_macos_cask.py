@@ -133,6 +133,11 @@ class MacosCaskReleaseGuard(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 generate_cask.macho_archs(script)
 
+            truncated_fat = pathlib.Path(tmp) / "truncated-fat"
+            truncated_fat.write_bytes(fat_macho(x86)[:-1])
+            with self.assertRaisesRegex(RuntimeError, "truncated Mach-O architecture table"):
+                generate_cask.macho_archs(truncated_fat)
+
     def test_expected_architecture_per_target(self) -> None:
         self.assertEqual(generate_cask.EXPECTED_MACHO_ARCH[generate_cask.ARM_TARGET], "arm64")
         self.assertEqual(generate_cask.EXPECTED_MACHO_ARCH[generate_cask.INTEL_TARGET], "x86_64")

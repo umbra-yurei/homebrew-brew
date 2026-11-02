@@ -118,7 +118,7 @@ else
     CHANNEL_SUFFIX=""
 fi
 
-BASE_URL="https://files.cruma.io/files/tunnel-agent/v${VERSION}"
+BASE_URL="$(python3 -c 'import artifact_urls, sys; print(artifact_urls.release_base(sys.argv[1]))' "${VERSION}")"
 
 if [[ "${GENERATE_MACOS}" == true && "${GENERATE_LINUX}" == true ]]; then
     TARGET_LABEL="formula + cask"
