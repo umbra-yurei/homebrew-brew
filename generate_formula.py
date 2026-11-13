@@ -34,19 +34,20 @@ import sys
 import tempfile
 import urllib.request
 
+from artifact_urls import ARTIFACT_BASE
+
 
 # The Linux formula must install the GNU (GUI-capable) desktop build. The musl
 # builds are headless, and anything else on files.cruma.io (AppImages, server
 # artifacts) is not what `brew install cruma` promises, so only this exact
 # shape is accepted.
-LINUX_ARTIFACT_BASE = "https://files.cruma.io/files/tunnel-agent"
 LINUX_ARM_TARGET = "aarch64-unknown-linux-gnu"
 LINUX_X86_TARGET = "x86_64-unknown-linux-gnu"
 LINUX_ARTIFACT_FILE = "cruma"
 
 
 def expected_linux_url(version: str, target: str) -> str:
-    return f"{LINUX_ARTIFACT_BASE}/v{version}/{target}/{LINUX_ARTIFACT_FILE}"
+    return f"{ARTIFACT_BASE}/v{version}/{target}/{LINUX_ARTIFACT_FILE}"
 
 
 def check_linux_url(url: str, version: str, target: str) -> str | None:
