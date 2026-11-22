@@ -5,8 +5,12 @@ set -euo pipefail
 # Creates a temporary tap so Homebrew 5.0+ accepts the cask.
 #
 # Usage:
-#   ./test-cask-local.sh                          # looks for DMG in ../cruma-sdk/release-v*/
+#   ./test-cask-local.sh                          # DMG for this Mac's CPU from ../cruma-sdk/release-v*/
 #   ./test-cask-local.sh /path/to/cruma.dmg       # explicit DMG path
+#
+# Run it once on an Apple Silicon Mac (aarch64-apple-darwin DMG) and once on an Intel Mac
+# (x86_64-apple-darwin DMG). The install only passes when the installed `cruma` is
+# built for this Mac and `cruma --version` runs.
 #
 # To uninstall afterwards:
 #   ./test-cask-local.sh --uninstall
@@ -28,19 +32,35 @@ fi
 # ── Locate DMG ────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+case "$(uname -m)" in
+    arm64|aarch64)
+        HOST_TARGET="aarch64-apple-darwin"
+        HOST_MACHO_ARCH="arm64"
+        ;;
+    x86_64)
+        HOST_TARGET="x86_64-apple-darwin"
+        HOST_MACHO_ARCH="x86_64"
+        ;;
+    *)
+        echo "Error: unsupported CPU '$(uname -m)'"
+        exit 1
+        ;;
+esac
+
 if [[ -n "${1:-}" ]]; then
     DMG_PATH="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 else
-    DMG_PATH="$(find "${SCRIPT_DIR}/../cruma-sdk" -name "cruma.dmg" -path "*/aarch64-apple-darwin/*" 2>/dev/null | sort | tail -1)"
+    DMG_PATH="$(find "${SCRIPT_DIR}/../cruma-sdk" -name "cruma.dmg" -path "*/${HOST_TARGET}/*" 2>/dev/null | sort | tail -1)"
 fi
 
 if [[ -z "${DMG_PATH}" || ! -f "${DMG_PATH}" ]]; then
-    echo "Error: could not find cruma.dmg"
+    echo "Error: could not find a ${HOST_TARGET} cruma.dmg"
     echo "Run build-release-artifacts.sh (or pack-osx.sh) first, or pass the path explicitly."
     exit 1
 fi
 
 echo "Using DMG: ${DMG_PATH}"
+echo "Host:      ${HOST_TARGET}"
 
 # ── Compute SHA256 ────────────────────────────────────────────────────────────
 SHA256="$(shasum -a 256 "${DMG_PATH}" | awk '{print $1}')"
@@ -114,6 +134,11 @@ mdls /Applications/Cruma.app 2>&1 | head -20 || true
 # ── Smoke test ────────────────────────────────────────────────────────────────
 echo ""
 echo "Testing CLI..."
+INSTALLED_ARCHS="$(lipo -archs "$(command -v cruma)")"
+if [[ " ${INSTALLED_ARCHS} " != *" ${HOST_MACHO_ARCH} "* ]]; then
+    echo "Error: installed cruma is '${INSTALLED_ARCHS}', but this Mac needs '${HOST_MACHO_ARCH}'."
+    exit 1
+fi
 if cruma --version; then
     echo ""
     echo "==> Cask install OK — app and CLI both work."

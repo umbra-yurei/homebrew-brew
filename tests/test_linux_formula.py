@@ -48,7 +48,7 @@ class GeneratorRun:
 
     def __init__(self) -> None:
         self.dir = pathlib.Path(tempfile.mkdtemp(prefix="brew-guard-"))
-        for name in ("g.sh", "generate_formula.py", "generate_cask.py"):
+        for name in ("g.sh", "artifact_urls.py", "generate_formula.py", "generate_cask.py"):
             shutil.copy2(REPO / name, self.dir / name)
         self.log = self.dir / "downloads.log"
         self.env = dict(
@@ -94,7 +94,7 @@ class LinuxFormulaReleaseGuard(unittest.TestCase):
                 self.gen.log.unlink()
 
     def test_generator_rejects_non_gnu_artifacts_before_downloading(self) -> None:
-        base = f"{generate_formula.LINUX_ARTIFACT_BASE}/v{VERSION}"
+        base = f"{generate_formula.ARTIFACT_BASE}/v{VERSION}"
         good_arm = generate_formula.expected_linux_url(VERSION, generate_formula.LINUX_ARM_TARGET)
         good_x86 = generate_formula.expected_linux_url(VERSION, generate_formula.LINUX_X86_TARGET)
         bad = {

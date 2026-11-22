@@ -15,7 +15,7 @@ Options:
   --preview      Generate preview artifacts as cruma-preview
   --os <value>   Limit output to macos, linux, or all (default: all)
   --skip-macos-verify
-                 Skip Gatekeeper/signature verification of the remote macOS DMG
+                 Skip Gatekeeper/signature verification of the remote macOS DMGs
   --allow-quarantine-clear
                  Add an explicit unsafe xattr quarantine-clear fallback to the generated cask
   --help         Show this help text
@@ -118,7 +118,7 @@ else
     CHANNEL_SUFFIX=""
 fi
 
-BASE_URL="https://files.cruma.io/files/tunnel-agent/v${VERSION}"
+BASE_URL="$(python3 -c 'import artifact_urls, sys; print(artifact_urls.release_base(sys.argv[1]))' "${VERSION}")"
 
 if [[ "${GENERATE_MACOS}" == true && "${GENERATE_LINUX}" == true ]]; then
     TARGET_LABEL="formula + cask"
@@ -152,7 +152,8 @@ if [[ "${GENERATE_MACOS}" == true ]]; then
     generate_cask_args=(
         --name "${NAME}"
         --version "${VERSION}"
-        --url "${BASE_URL}/aarch64-apple-darwin/${CASK_DMG_NAME}"
+        --arm-url "${BASE_URL}/aarch64-apple-darwin/${CASK_DMG_NAME}"
+        --intel-url "${BASE_URL}/x86_64-apple-darwin/${CASK_DMG_NAME}"
         --app-name "${CASK_APP_NAME}"
         --app-target "${CASK_APP_TARGET}"
         --binary-name "cruma"
