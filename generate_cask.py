@@ -252,6 +252,7 @@ def render_cask(
 """
 
     dmg_name = f"{kebab_case(cask_name)}.dmg"
+    manifest = "preview" if kebab_case(cask_name).endswith("-preview") else "stable"
     cask = f"""cask "{cask_name}" do
   version "{version}"
   sha256 "{sha256}"
@@ -260,6 +261,13 @@ def render_cask(
   name "{installed_app_name.removesuffix('.app')}"
   desc "{desc}"
   homepage "{homepage}"
+
+  livecheck do
+    url "{ARTIFACT_BASE}/{manifest}.json"
+    strategy :json do |json|
+      json["version"]
+    end
+  end
 
   depends_on arch: :arm64
 

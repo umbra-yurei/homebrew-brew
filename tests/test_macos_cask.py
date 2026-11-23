@@ -61,7 +61,7 @@ class MacosCaskReleaseGuard(unittest.TestCase):
                 self.assertIn("depends_on arch: :arm64", cask)
                 self.assertNotIn("x86_64", cask)
                 self.assertNotRegex(cask, r"(?i)intel|on_intel|\barch (arm|intel)")
-                self.assertEqual(len(re.findall(r'^\s*url ', cask, re.MULTILINE)), 1)
+                self.assertEqual(len(re.findall(r'^  url ', cask, re.MULTILINE)), 1)
                 self.assertEqual(len(re.findall(r'^\s*sha256 ', cask, re.MULTILINE)), 1)
                 self.assertEqual(cask_field(cask, r'^\s*version "([^"]+)"'), VERSION)
                 template = cask_field(cask, r'^\s*url "([^"]+)"')
@@ -70,6 +70,12 @@ class MacosCaskReleaseGuard(unittest.TestCase):
                 self.assertIn('binary "#{appdir}/', cask)
                 self.assertIn(f'  version "{VERSION}"\n  sha256 "', cask)
                 self.assertNotIn("\n\nend", cask)
+                manifest = "preview" if name.endswith("preview") else "stable"
+                self.assertIn(
+                    f'  livecheck do\n    url "{generate_cask.ARTIFACT_BASE}/{manifest}.json"\n'
+                    '    strategy :json do |json|\n      json["version"]\n    end\n  end\n',
+                    cask,
+                )
                 self.gen.log.unlink()
 
     def test_generator_rejects_wrong_dmgs_before_downloading(self) -> None:

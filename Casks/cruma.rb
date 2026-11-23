@@ -7,6 +7,13 @@ cask "cruma" do
   desc "Tunnel agent"
   homepage "https://cruma.io/"
 
+  livecheck do
+    url "https://files.cruma.io/files/tunnel-agent/stable.json"
+    strategy :json do |json|
+      json["version"]
+    end
+  end
+
   depends_on arch: :arm64
 
   app "Cruma.app"
