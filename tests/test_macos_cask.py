@@ -1,4 +1,4 @@
-"""Release guard: each Mac CPU architecture gets its own notarized DMG.
+"""Release guard: the Homebrew casks are Apple Silicon only.
 
 Runs the real release entry point (`g.sh --os macos`) for both channels with
 downloads stubbed, then checks the cask it wrote. Run from the repo root:
@@ -22,11 +22,6 @@ sys.path.insert(0, str(REPO))
 
 import generate_cask  # noqa: E402
 
-ARCH_TARGETS = {
-    "arm": generate_cask.ARM_TARGET,
-    "intel": generate_cask.INTEL_TARGET,
-}
-
 
 def stub_sha256(url: str) -> str:
     return hashlib.sha256(f"stub artifact for {url}".encode()).hexdigest()
@@ -36,14 +31,6 @@ def cask_field(cask: str, pattern: str) -> str:
     match = re.search(pattern, cask, re.MULTILINE)
     assert match, f"{pattern!r} not found in:\n{cask}"
     return match.group(1)
-
-
-def resolve_url(cask: str, arch: str) -> str:
-    """The url Homebrew fetches for `arch`: the template with version and arch substituted."""
-    version = cask_field(cask, r'^\s*version "([^"]+)"')
-    arches = dict(re.findall(r'(arm|intel): "([^"]+)"', cask_field(cask, r'^\s*(arch .*)$')))
-    template = cask_field(cask, r'^\s*url "([^"]+)"')
-    return template.replace("#{version}", version).replace("#{arch}", arches[arch])
 
 
 def thin_macho(cpu_type: int) -> bytes:
@@ -60,7 +47,7 @@ class MacosCaskReleaseGuard(unittest.TestCase):
         self.gen = GeneratorRun()
         self.addCleanup(self.gen.cleanup)
 
-    def test_cask_selects_the_dmg_of_each_architecture_for_both_channels(self) -> None:
+    def test_cask_is_apple_silicon_only_for_both_channels(self) -> None:
         for channel, (name, flags) in CHANNELS.items():
             with self.subTest(channel=channel):
                 result = self.gen.run("bash", "g.sh", VERSION, *flags, "--os", "macos")
@@ -68,52 +55,49 @@ class MacosCaskReleaseGuard(unittest.TestCase):
                 self.assertFalse((self.gen.dir / "Formula").exists(), "--os macos wrote a formula")
                 cask = (self.gen.dir / "Casks" / f"{name}.rb").read_text()
 
-                urls = {
-                    arch: generate_cask.expected_dmg_url(VERSION, target, name)
-                    for arch, target in ARCH_TARGETS.items()
-                }
-                self.assertEqual(sorted(self.gen.downloads()), sorted(urls.values()))
-                self.assertNotEqual(urls["arm"], urls["intel"])
+                url = generate_cask.expected_dmg_url(VERSION, name)
+                self.assertEqual(self.gen.downloads(), [url])
 
-                self.assertIn(
-                    f'arch arm: "{generate_cask.ARM_TARGET}", intel: "{generate_cask.INTEL_TARGET}"',
-                    cask,
-                )
-                for arch, url in urls.items():
-                    self.assertEqual(resolve_url(cask, arch), url)
-                    self.assertRegex(cask, rf'{arch}:\s+"{stub_sha256(url)}"')
+                self.assertIn("depends_on arch: :arm64", cask)
+                self.assertNotIn("x86_64", cask)
+                self.assertNotRegex(cask, r"(?i)intel|on_intel|\barch (arm|intel)")
                 self.assertEqual(len(re.findall(r'^\s*url ', cask, re.MULTILINE)), 1)
+                self.assertEqual(len(re.findall(r'^\s*sha256 ', cask, re.MULTILINE)), 1)
+                self.assertEqual(cask_field(cask, r'^\s*version "([^"]+)"'), VERSION)
+                template = cask_field(cask, r'^\s*url "([^"]+)"')
+                self.assertEqual(template.replace("#{version}", VERSION), url)
+                self.assertEqual(cask_field(cask, r'^\s*sha256 "([^"]+)"'), stub_sha256(url))
                 self.assertIn('binary "#{appdir}/', cask)
                 self.gen.log.unlink()
 
     def test_generator_rejects_wrong_dmgs_before_downloading(self) -> None:
         for channel, (name, _) in CHANNELS.items():
-            good = {
-                target: generate_cask.expected_dmg_url(VERSION, target, name)
-                for target in ARCH_TARGETS.values()
-            }
-            arm, intel = good[generate_cask.ARM_TARGET], good[generate_cask.INTEL_TARGET]
+            good = generate_cask.expected_dmg_url(VERSION, name)
             other_channel = "cruma.dmg" if name.endswith("preview") else "cruma-preview.dmg"
             bad = {
-                "arm/intel swapped": (intel, arm),
-                "intel reused for arm": (intel, intel),
-                "other channel": (arm.rsplit("/", 1)[0] + "/" + other_channel, intel),
-                "other version": (arm, intel.replace(VERSION, "0.0.1")),
-                "other host": (arm.replace("files.cruma.io", "example.com"), intel),
-                "linux binary": (arm, intel.replace("x86_64-apple-darwin/", "x86_64-unknown-linux-gnu/")),
+                "intel dmg": good.replace("aarch64-apple-darwin/", "x86_64-apple-darwin/"),
+                "other channel": good.rsplit("/", 1)[0] + "/" + other_channel,
+                "other version": good.replace(VERSION, "0.0.1"),
+                "other host": good.replace("files.cruma.io", "example.com"),
+                "linux binary": good.replace("aarch64-apple-darwin/", "aarch64-unknown-linux-gnu/"),
             }
-            for case, (arm_url, intel_url) in bad.items():
+            for case, url in bad.items():
                 with self.subTest(case=case, channel=channel):
                     result = self.gen.run(
                         sys.executable, "generate_cask.py",
-                        "--name", name, "--version", VERSION,
-                        "--arm-url", arm_url, "--intel-url", intel_url,
+                        "--name", name, "--version", VERSION, "--url", url,
                         "--app-name", "Cruma.app", "--binary-name", "cruma",
                     )
                     self.assertNotEqual(result.returncode, 0, result.stdout)
                     self.assertIn("DMG URL must be", result.stderr)
                     self.assertFalse((self.gen.dir / "Casks" / f"{name}.rb").exists())
                     self.assertEqual(self.gen.downloads(), [])
+
+    def test_generator_has_no_intel_options(self) -> None:
+        result = self.gen.run(sys.executable, "generate_cask.py", "--help")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("--intel-url", result.stdout)
+        self.assertNotIn("--arm-url", result.stdout)
 
     def test_macho_architecture_reader(self) -> None:
         x86, arm = 0x01000007, 0x0100000C
@@ -138,9 +122,8 @@ class MacosCaskReleaseGuard(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "truncated Mach-O architecture table"):
                 generate_cask.macho_archs(truncated_fat)
 
-    def test_expected_architecture_per_target(self) -> None:
-        self.assertEqual(generate_cask.EXPECTED_MACHO_ARCH[generate_cask.ARM_TARGET], "arm64")
-        self.assertEqual(generate_cask.EXPECTED_MACHO_ARCH[generate_cask.INTEL_TARGET], "x86_64")
+    def test_expected_architecture_is_arm64(self) -> None:
+        self.assertEqual(generate_cask.EXPECTED_MACHO_ARCH, "arm64")
 
 
 if __name__ == "__main__":
