@@ -5,12 +5,11 @@ set -euo pipefail
 # Creates a temporary tap so Homebrew 5.0+ accepts the cask.
 #
 # Usage:
-#   ./test-cask-local.sh                          # DMG for this Mac's CPU from ../cruma-sdk/release-v*/
+#   ./test-cask-local.sh                          # Apple Silicon DMG from ../cruma-sdk/release-v*/
 #   ./test-cask-local.sh /path/to/cruma.dmg       # explicit DMG path
 #
-# Run it once on an Apple Silicon Mac (aarch64-apple-darwin DMG) and once on an Intel Mac
-# (x86_64-apple-darwin DMG). The install only passes when the installed `cruma` is
-# built for this Mac and `cruma --version` runs.
+# Run it on an Apple Silicon Mac (aarch64-apple-darwin DMG). The install only passes
+# when the installed `cruma` is arm64 and `cruma --version` runs.
 #
 # To uninstall afterwards:
 #   ./test-cask-local.sh --uninstall
@@ -37,12 +36,8 @@ case "$(uname -m)" in
         HOST_TARGET="aarch64-apple-darwin"
         HOST_MACHO_ARCH="arm64"
         ;;
-    x86_64)
-        HOST_TARGET="x86_64-apple-darwin"
-        HOST_MACHO_ARCH="x86_64"
-        ;;
     *)
-        echo "Error: unsupported CPU '$(uname -m)'"
+        echo "Error: unsupported CPU '$(uname -m)' (Apple Silicon only)"
         exit 1
         ;;
 esac
@@ -79,6 +74,8 @@ cask "cruma" do
   name "Cruma"
   desc "Cruma tunnel agent (local test)"
   homepage "https://cruma.io"
+
+  depends_on arch: :arm64
 
   app "Cruma.app"
   binary "Cruma.app/Contents/MacOS/cruma"

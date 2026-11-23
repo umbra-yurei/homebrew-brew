@@ -2,15 +2,14 @@
 """
 Utility script to generate a Homebrew cask for a macOS .app distributed as a DMG.
 
-The cask lists one DMG per CPU architecture (Apple Silicon and Intel) and
-Homebrew installs the one matching the Mac.
+The cask installs the Apple Silicon DMG and declares `depends_on arch: :arm64`;
+Intel Macs are not supported.
 
 Example:
     python generate_cask.py \\
         --name cruma \\
         --version 0.3.0-beta.3 \\
-        --arm-url https://files.cruma.io/.../aarch64-apple-darwin/cruma.dmg \\
-        --intel-url https://files.cruma.io/.../x86_64-apple-darwin/cruma.dmg \\
+        --url https://files.cruma.io/.../aarch64-apple-darwin/cruma.dmg \\
         --app-name "Cruma.app" \\
         --binary-name cruma \\
         --desc "Cruma tunnel agent" \\
@@ -36,26 +35,25 @@ import urllib.request
 from artifact_urls import ARTIFACT_BASE
 
 
-# Each architecture's DMG lives at exactly one place on files.cruma.io. Anything
-# else (the other architecture, another channel, another version) is refused
-# before anything is downloaded, so an arm64 DMG can never be offered to Intel Macs.
+# The Apple Silicon DMG lives at exactly one place on files.cruma.io. Anything
+# else (another architecture, another channel, another version) is refused
+# before anything is downloaded.
 ARM_TARGET = "aarch64-apple-darwin"
-INTEL_TARGET = "x86_64-apple-darwin"
 
 # Mach-O cputype values (mach/machine.h) -> the names `lipo -archs` prints.
 MACHO_CPU_TYPES = {0x01000007: "x86_64", 0x0100000C: "arm64"}
-EXPECTED_MACHO_ARCH = {ARM_TARGET: "arm64", INTEL_TARGET: "x86_64"}
+EXPECTED_MACHO_ARCH = "arm64"
 
 
-def expected_dmg_url(version: str, target: str, cask_name: str) -> str:
-    return f"{ARTIFACT_BASE}/v{version}/{target}/{kebab_case(cask_name)}.dmg"
+def expected_dmg_url(version: str, cask_name: str) -> str:
+    return f"{ARTIFACT_BASE}/v{version}/{ARM_TARGET}/{kebab_case(cask_name)}.dmg"
 
 
-def check_dmg_url(url: str, version: str, target: str, cask_name: str) -> str | None:
-    """Return an error message unless `url` is the DMG of `cask_name` built for `target`."""
-    expected = expected_dmg_url(version, target, cask_name)
+def check_dmg_url(url: str, version: str, cask_name: str) -> str | None:
+    """Return an error message unless `url` is the Apple Silicon DMG of `cask_name`."""
+    expected = expected_dmg_url(version, cask_name)
     if url != expected:
-        return f"{target} DMG URL must be {expected}, got {url}"
+        return f"{ARM_TARGET} DMG URL must be {expected}, got {url}"
     return None
 
 
@@ -138,18 +136,14 @@ def run_spctl_open_assess(dmg_path: pathlib.Path) -> None:
         print(message)
 
 
-NATIVE_MACHINES = {"arm64": {"arm64", "aarch64"}, "x86_64": {"x86_64", "amd64"}}
-
-
-def host_runs_natively(expected_arch: str) -> bool:
-    return platform.machine().lower() in NATIVE_MACHINES[expected_arch]
+def host_runs_natively() -> bool:
+    return platform.machine().lower() in {"arm64", "aarch64"}
 
 
 def verify_macos_artifact(
     dmg_path: pathlib.Path,
     app_name: str,
     binary_name: str,
-    expected_arch: str,
     version: str,
 ) -> None:
     required_tools = ["spctl", "xcrun", "hdiutil", "codesign"]
@@ -157,7 +151,7 @@ def verify_macos_artifact(
     if missing:
         raise RuntimeError(f"missing required macOS verification tools: {', '.join(missing)}")
 
-    print(f"Verifying notarized {expected_arch} DMG with Gatekeeper...")
+    print("Verifying notarized arm64 DMG with Gatekeeper...")
     print(run_checked(["codesign", "--verify", "--verbose=2", str(dmg_path)]).strip())
     run_spctl_open_assess(dmg_path)
     print(run_checked(["xcrun", "stapler", "validate", str(dmg_path)]).strip())
@@ -188,13 +182,13 @@ def verify_macos_artifact(
 
             binary_path = app_path / "Contents" / "MacOS" / binary_name
             archs = macho_archs(binary_path)
-            if expected_arch not in archs:
+            if EXPECTED_MACHO_ARCH not in archs:
                 raise RuntimeError(
-                    f"{binary_path} contains {sorted(archs)}, expected {expected_arch}"
+                    f"{binary_path} contains {sorted(archs)}, expected {EXPECTED_MACHO_ARCH}"
                 )
             print(f"Executable architectures: {', '.join(sorted(archs))}")
 
-            if host_runs_natively(expected_arch):
+            if host_runs_natively():
                 reported = run_checked([str(binary_path), "--version"]).strip()
                 print(reported)
                 if version not in reported:
@@ -202,7 +196,7 @@ def verify_macos_artifact(
                         f"`{binary_name} --version` printed {reported!r}, expected it to contain {version}"
                     )
             else:
-                print(f"Skipping `--version`: this Mac cannot run {expected_arch} natively.")
+                print("Skipping `--version`: this host cannot run arm64 natively.")
         finally:
             subprocess.run(
                 ["hdiutil", "detach", mount_dir],
@@ -215,8 +209,7 @@ def verify_macos_artifact(
 def render_cask(
     cask_name: str,
     version: str,
-    arm_sha256: str,
-    intel_sha256: str,
+    sha256: str,
     app_name: str,
     app_target: str,
     binary_name: str,
@@ -240,7 +233,8 @@ def render_cask(
   postflight do
     system_command "/usr/bin/xattr",
                    args: ["-drs", "com.apple.quarantine", "#{{appdir}}/{installed_app_name}"]
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
+                   "LaunchServices.framework/Support/lsregister",
                    args: ["-f", "#{{appdir}}/{installed_app_name}"]
     system_command "/usr/bin/mdimport",
                    args: ["#{{appdir}}/{installed_app_name}"]
@@ -249,7 +243,8 @@ def render_cask(
     else:
         postflight = f"""
   postflight do
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
+                   "LaunchServices.framework/Support/lsregister",
                    args: ["-f", "#{{appdir}}/{installed_app_name}"]
     system_command "/usr/bin/mdimport",
                    args: ["#{{appdir}}/{installed_app_name}"]
@@ -257,25 +252,29 @@ def render_cask(
 """
 
     dmg_name = f"{kebab_case(cask_name)}.dmg"
+    manifest = "preview" if kebab_case(cask_name).endswith("-preview") else "stable"
     cask = f"""cask "{cask_name}" do
-  arch arm: "{ARM_TARGET}", intel: "{INTEL_TARGET}"
-
   version "{version}"
-  sha256 arm:   "{arm_sha256}",
-         intel: "{intel_sha256}"
+  sha256 "{sha256}"
 
-  url "{ARTIFACT_BASE}/v#{{version}}/#{{arch}}/{dmg_name}"
-
+  url "{ARTIFACT_BASE}/v#{{version}}/{ARM_TARGET}/{dmg_name}"
   name "{installed_app_name.removesuffix('.app')}"
   desc "{desc}"
   homepage "{homepage}"
 
-  {app_clause}
+  livecheck do
+    url "{ARTIFACT_BASE}/{manifest}.json"
+    strategy :json do |json|
+      json["version"]
+    end
+  end
 
+  depends_on arch: :arm64
+
+  {app_clause}
   # Symlinks the binary into $(brew --prefix)/bin so `{binary_target}` works in the terminal
   {binary_clause}
-{postflight}
-end
+{postflight}end
 """
     return "\n".join(line.rstrip() for line in cask.strip("\n").splitlines()) + "\n"
 
@@ -284,8 +283,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate a Homebrew cask for a macOS DMG.")
     parser.add_argument("--name", required=True, help="Cask name (e.g. cruma)")
     parser.add_argument("--version", required=True, help="Semantic version string")
-    parser.add_argument("--arm-url", required=True, help=f"Download URL for the Apple Silicon DMG ({ARM_TARGET})")
-    parser.add_argument("--intel-url", required=True, help=f"Download URL for the Intel DMG ({INTEL_TARGET})")
+    parser.add_argument("--url", required=True, help=f"Download URL for the Apple Silicon DMG ({ARM_TARGET})")
     parser.add_argument("--app-name", required=True, help='Name of the .app inside the DMG (e.g. "Cruma.app")')
     parser.add_argument(
         "--app-target",
@@ -330,38 +328,27 @@ def main() -> int:
 
     cask_file = output_dir / f"{kebab_case(args.name)}.rb"
 
-    dmgs = ((ARM_TARGET, args.arm_url), (INTEL_TARGET, args.intel_url))
-    for target, url in dmgs:
-        error = check_dmg_url(url, args.version, target, args.name)
-        if error:
-            print(f"error: {error}", file=sys.stderr)
-            return 1
+    error = check_dmg_url(args.url, args.version, args.name)
+    if error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
 
-    sha256s: dict[str, str] = {}
-    for target, url in dmgs:
-        print(f"Downloading {target} DMG from {url}...")
-        artifact_path = download_file(url)
+    print(f"Downloading {ARM_TARGET} DMG from {args.url}...")
+    artifact_path = download_file(args.url)
+    try:
+        sha256 = hash_file(artifact_path)
+        if sys.platform == "darwin" and not args.skip_verify:
+            verify_macos_artifact(artifact_path, args.app_name, args.binary_name, args.version)
+    finally:
         try:
-            sha256s[target] = hash_file(artifact_path)
-            if sys.platform == "darwin" and not args.skip_verify:
-                verify_macos_artifact(
-                    artifact_path,
-                    args.app_name,
-                    args.binary_name,
-                    EXPECTED_MACHO_ARCH[target],
-                    args.version,
-                )
-        finally:
-            try:
-                artifact_path.unlink()
-            except OSError:
-                pass
+            artifact_path.unlink()
+        except OSError:
+            pass
 
     contents = render_cask(
         cask_name=args.name,
         version=args.version,
-        arm_sha256=sha256s[ARM_TARGET],
-        intel_sha256=sha256s[INTEL_TARGET],
+        sha256=sha256,
         app_name=args.app_name,
         app_target=app_target,
         binary_name=args.binary_name,
@@ -373,8 +360,7 @@ def main() -> int:
 
     cask_file.write_text(contents)
     print(f"Wrote cask to {cask_file}")
-    for target, _ in dmgs:
-        print(f"SHA256 ({target}): {sha256s[target]}")
+    print(f"SHA256 ({ARM_TARGET}): {sha256}")
 
     return 0
 
