@@ -68,6 +68,8 @@ class MacosCaskReleaseGuard(unittest.TestCase):
                 self.assertEqual(template.replace("#{version}", VERSION), url)
                 self.assertEqual(cask_field(cask, r'^\s*sha256 "([^"]+)"'), stub_sha256(url))
                 self.assertIn('binary "#{appdir}/', cask)
+                self.assertIn(f'  version "{VERSION}"\n  sha256 "', cask)
+                self.assertNotIn("\n\nend", cask)
                 self.gen.log.unlink()
 
     def test_generator_rejects_wrong_dmgs_before_downloading(self) -> None:

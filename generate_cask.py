@@ -233,7 +233,8 @@ def render_cask(
   postflight do
     system_command "/usr/bin/xattr",
                    args: ["-drs", "com.apple.quarantine", "#{{appdir}}/{installed_app_name}"]
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
+                   "LaunchServices.framework/Support/lsregister",
                    args: ["-f", "#{{appdir}}/{installed_app_name}"]
     system_command "/usr/bin/mdimport",
                    args: ["#{{appdir}}/{installed_app_name}"]
@@ -242,7 +243,8 @@ def render_cask(
     else:
         postflight = f"""
   postflight do
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
+                   "LaunchServices.framework/Support/lsregister",
                    args: ["-f", "#{{appdir}}/{installed_app_name}"]
     system_command "/usr/bin/mdimport",
                    args: ["#{{appdir}}/{installed_app_name}"]
@@ -252,10 +254,9 @@ def render_cask(
     dmg_name = f"{kebab_case(cask_name)}.dmg"
     cask = f"""cask "{cask_name}" do
   version "{version}"
-
-  url "{ARTIFACT_BASE}/v#{{version}}/{ARM_TARGET}/{dmg_name}"
   sha256 "{sha256}"
 
+  url "{ARTIFACT_BASE}/v#{{version}}/{ARM_TARGET}/{dmg_name}"
   name "{installed_app_name.removesuffix('.app')}"
   desc "{desc}"
   homepage "{homepage}"
@@ -263,11 +264,9 @@ def render_cask(
   depends_on arch: :arm64
 
   {app_clause}
-
   # Symlinks the binary into $(brew --prefix)/bin so `{binary_target}` works in the terminal
   {binary_clause}
-{postflight}
-end
+{postflight}end
 """
     return "\n".join(line.rstrip() for line in cask.strip("\n").splitlines()) + "\n"
 

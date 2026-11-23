@@ -102,6 +102,7 @@ if [[ "${PREVIEW}" == true ]]; then
     NAME="cruma-preview"
     DESC="Cruma tunnel agent (preview)"
     FORMULA_BINARY_TARGET="cruma-preview"
+    CASK_DESC="Tunnel agent (preview)"
     CASK_DMG_NAME="cruma-preview.dmg"
     CASK_APP_NAME="Cruma Preview.app"
     CASK_APP_TARGET="Cruma Preview.app"
@@ -111,6 +112,7 @@ else
     NAME="cruma"
     DESC="Cruma tunnel agent"
     FORMULA_BINARY_TARGET="cruma"
+    CASK_DESC="Tunnel agent"
     CASK_DMG_NAME="cruma.dmg"
     CASK_APP_NAME="Cruma.app"
     CASK_APP_TARGET="Cruma.app"
@@ -157,8 +159,8 @@ if [[ "${GENERATE_MACOS}" == true ]]; then
         --app-target "${CASK_APP_TARGET}"
         --binary-name "cruma"
         --binary-target "${CASK_BINARY_TARGET}"
-        --desc "${DESC}"
-        --homepage "https://cruma.io"
+        --desc "${CASK_DESC}"
+        --homepage "https://cruma.io/"
     )
     if [[ "${SKIP_MACOS_VERIFY}" == true ]]; then
         generate_cask_args+=(--skip-verify)
