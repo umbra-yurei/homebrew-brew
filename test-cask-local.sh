@@ -80,13 +80,13 @@ cask "cruma" do
   app "Cruma.app"
   binary "Cruma.app/Contents/MacOS/cruma"
 
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-drs", "com.apple.quarantine", "#{appdir}/Cruma.app"]
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
-                   args: ["-f", "#{appdir}/Cruma.app"]
-    system_command "/usr/bin/mdimport",
-                   args: ["#{appdir}/Cruma.app"]
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args: ["-drs", "com.apple.quarantine", "{{appdir}}/Cruma.app"]
+    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+        args: ["-f", "{{appdir}}/Cruma.app"]
+    run "/usr/bin/mdimport",
+        args: ["{{appdir}}/Cruma.app"]
   end
 end
 RUBY
@@ -109,7 +109,7 @@ rm -f "$(brew --cache)/downloads/"*--cruma.dmg
 
 brew install --cask "${TEMP_TAP_NAME}/cruma"
 
-# ── Run registration directly (postflight may run in restricted context) ──────
+# ── Run registration directly (postflight steps run in a restricted context) ─
 echo ""
 echo "Running post-install registration directly..."
 xattr -drs com.apple.quarantine /Applications/Cruma.app 2>/dev/null || true

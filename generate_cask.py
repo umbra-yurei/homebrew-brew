@@ -230,24 +230,24 @@ def render_cask(
     postflight = ""
     if clear_quarantine:
         postflight = f"""
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-drs", "com.apple.quarantine", "#{{appdir}}/{installed_app_name}"]
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
-                   "LaunchServices.framework/Support/lsregister",
-                   args: ["-f", "#{{appdir}}/{installed_app_name}"]
-    system_command "/usr/bin/mdimport",
-                   args: ["#{{appdir}}/{installed_app_name}"]
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args: ["-drs", "com.apple.quarantine", "{{{{appdir}}}}/{installed_app_name}"]
+    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
+        "LaunchServices.framework/Support/lsregister",
+        args: ["-f", "{{{{appdir}}}}/{installed_app_name}"]
+    run "/usr/bin/mdimport",
+        args: ["{{{{appdir}}}}/{installed_app_name}"]
   end
 """
     else:
         postflight = f"""
-  postflight do
-    system_command "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
-                   "LaunchServices.framework/Support/lsregister",
-                   args: ["-f", "#{{appdir}}/{installed_app_name}"]
-    system_command "/usr/bin/mdimport",
-                   args: ["#{{appdir}}/{installed_app_name}"]
+  postflight_steps do
+    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
+        "LaunchServices.framework/Support/lsregister",
+        args: ["-f", "{{{{appdir}}}}/{installed_app_name}"]
+    run "/usr/bin/mdimport",
+        args: ["{{{{appdir}}}}/{installed_app_name}"]
   end
 """
 
@@ -309,7 +309,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--allow-quarantine-clear",
         action="store_true",
-        help="Add an explicit postflight xattr quarantine-clear fallback to the generated cask",
+        help="Add an explicit postflight step that clears quarantine in the generated cask",
     )
     return parser.parse_args()
 
