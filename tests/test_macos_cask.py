@@ -68,6 +68,20 @@ class MacosCaskReleaseGuard(unittest.TestCase):
                 self.assertEqual(template.replace("#{version}", VERSION), url)
                 self.assertEqual(cask_field(cask, r'^\s*sha256 "([^"]+)"'), stub_sha256(url))
                 self.assertIn('binary "#{appdir}/', cask)
+                self.assertIn("  postflight_steps do\n", cask)
+                self.assertNotRegex(cask, r"^  postflight do$|system_command", msg=cask)
+                app_name = "Cruma Preview.app" if name.endswith("preview") else "Cruma.app"
+                self.assertIn(
+                    '    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\\n'
+                    '        "LaunchServices.framework/Support/lsregister",\n'
+                    f'        args: ["-f", "{{{{appdir}}}}/{app_name}"]\n',
+                    cask,
+                )
+                self.assertIn(
+                    '    run "/usr/bin/mdimport",\n'
+                    f'        args: ["{{{{appdir}}}}/{app_name}"]\n',
+                    cask,
+                )
                 self.assertIn(f'  version "{VERSION}"\n  sha256 "', cask)
                 self.assertNotIn("\n\nend", cask)
                 manifest = "preview" if name.endswith("preview") else "stable"
@@ -106,6 +120,34 @@ class MacosCaskReleaseGuard(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("--intel-url", result.stdout)
         self.assertNotIn("--arm-url", result.stdout)
+
+    def test_quarantine_fallback_uses_structured_postflight_steps(self) -> None:
+        cask = generate_cask.render_cask(
+            cask_name="cruma",
+            version=VERSION,
+            sha256="0" * 64,
+            app_name="Cruma.app",
+            app_target="Cruma.app",
+            binary_name="cruma",
+            binary_target="cruma",
+            desc="Tunnel agent",
+            homepage="https://cruma.io/",
+            clear_quarantine=True,
+        )
+
+        self.assertIn("  postflight_steps do\n", cask)
+        self.assertNotRegex(cask, r"^  postflight do$|system_command", msg=cask)
+        self.assertIn(
+            '    run "/usr/bin/xattr",\n'
+            '        args: ["-drs", "com.apple.quarantine", "{{appdir}}/Cruma.app"]\n',
+            cask,
+        )
+        self.assertIn(
+            '    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\\n'
+            '        "LaunchServices.framework/Support/lsregister",\n',
+            cask,
+        )
+        self.assertIn('    run "/usr/bin/mdimport",\n', cask)
 
     def test_macho_architecture_reader(self) -> None:
         x86, arm = 0x01000007, 0x0100000C
