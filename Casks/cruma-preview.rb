@@ -19,12 +19,4 @@ cask "cruma-preview" do
   app "Cruma Preview.app"
   # Symlinks the binary into $(brew --prefix)/bin so `cruma-preview` works in the terminal
   binary "#{appdir}/Cruma Preview.app/Contents/MacOS/cruma", target: "cruma-preview"
-
-  postflight_steps do
-    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \
-        "LaunchServices.framework/Support/lsregister",
-        args: ["-f", "{{appdir}}/Cruma Preview.app"]
-    run "/usr/bin/mdimport",
-        args: ["{{appdir}}/Cruma Preview.app"]
-  end
 end

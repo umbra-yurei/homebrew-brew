@@ -232,22 +232,8 @@ def render_cask(
         postflight = f"""
   postflight_steps do
     run "/usr/bin/xattr",
-        args: ["-drs", "com.apple.quarantine", "{{{{appdir}}}}/{installed_app_name}"]
-    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
-        "LaunchServices.framework/Support/lsregister",
-        args: ["-f", "{{{{appdir}}}}/{installed_app_name}"]
-    run "/usr/bin/mdimport",
-        args: ["{{{{appdir}}}}/{installed_app_name}"]
-  end
-"""
-    else:
-        postflight = f"""
-  postflight_steps do
-    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\
-        "LaunchServices.framework/Support/lsregister",
-        args: ["-f", "{{{{appdir}}}}/{installed_app_name}"]
-    run "/usr/bin/mdimport",
-        args: ["{{{{appdir}}}}/{installed_app_name}"]
+        args: ["-drs", "com.apple.quarantine", "{{{{appdir}}}}/{installed_app_name}"],
+        must_succeed: false
   end
 """
 
