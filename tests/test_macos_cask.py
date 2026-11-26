@@ -68,20 +68,10 @@ class MacosCaskReleaseGuard(unittest.TestCase):
                 self.assertEqual(template.replace("#{version}", VERSION), url)
                 self.assertEqual(cask_field(cask, r'^\s*sha256 "([^"]+)"'), stub_sha256(url))
                 self.assertIn('binary "#{appdir}/', cask)
-                self.assertIn("  postflight_steps do\n", cask)
+                self.assertNotIn("  postflight_steps do\n", cask)
                 self.assertNotRegex(cask, r"^  postflight do$|system_command", msg=cask)
-                app_name = "Cruma Preview.app" if name.endswith("preview") else "Cruma.app"
-                self.assertIn(
-                    '    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\\n'
-                    '        "LaunchServices.framework/Support/lsregister",\n'
-                    f'        args: ["-f", "{{{{appdir}}}}/{app_name}"]\n',
-                    cask,
-                )
-                self.assertIn(
-                    '    run "/usr/bin/mdimport",\n'
-                    f'        args: ["{{{{appdir}}}}/{app_name}"]\n',
-                    cask,
-                )
+                self.assertNotIn("lsregister", cask)
+                self.assertNotIn("mdimport", cask)
                 self.assertIn(f'  version "{VERSION}"\n  sha256 "', cask)
                 self.assertNotIn("\n\nend", cask)
                 manifest = "preview" if name.endswith("preview") else "stable"
@@ -121,7 +111,34 @@ class MacosCaskReleaseGuard(unittest.TestCase):
         self.assertNotIn("--intel-url", result.stdout)
         self.assertNotIn("--arm-url", result.stdout)
 
-    def test_quarantine_fallback_uses_structured_postflight_steps(self) -> None:
+    def test_committed_casks_match_the_generator(self) -> None:
+        channels = {
+            "cruma": (
+                "00f461e891202f6120d2db4034d46ddf4ac1ed8edaab93a7c117ad434ac6f27f",
+                "Cruma.app", "cruma", "Tunnel agent",
+            ),
+            "cruma-preview": (
+                "be3b354ed1f899c40a433b583d094258e6a2b400ee0645913f12fdc6ce3031b1",
+                "Cruma Preview.app", "cruma-preview", "Tunnel agent (preview)",
+            ),
+        }
+        for name, (sha256, app_name, binary_target, desc) in channels.items():
+            with self.subTest(channel=name):
+                expected = generate_cask.render_cask(
+                    cask_name=name,
+                    version="1.0.22",
+                    sha256=sha256,
+                    app_name=app_name,
+                    app_target=app_name,
+                    binary_name="cruma",
+                    binary_target=binary_target,
+                    desc=desc,
+                    homepage="https://cruma.io/",
+                    clear_quarantine=False,
+                )
+                self.assertEqual((REPO / "Casks" / f"{name}.rb").read_text(), expected)
+
+    def test_quarantine_fallback_is_the_only_nonfatal_postflight_step(self) -> None:
         cask = generate_cask.render_cask(
             cask_name="cruma",
             version=VERSION,
@@ -139,15 +156,14 @@ class MacosCaskReleaseGuard(unittest.TestCase):
         self.assertNotRegex(cask, r"^  postflight do$|system_command", msg=cask)
         self.assertIn(
             '    run "/usr/bin/xattr",\n'
-            '        args: ["-drs", "com.apple.quarantine", "{{appdir}}/Cruma.app"]\n',
+            '        args: ["-drs", "com.apple.quarantine", "{{appdir}}/Cruma.app"],\n'
+            '        must_succeed: false\n',
             cask,
         )
-        self.assertIn(
-            '    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \\\n'
-            '        "LaunchServices.framework/Support/lsregister",\n',
-            cask,
-        )
-        self.assertIn('    run "/usr/bin/mdimport",\n', cask)
+        self.assertEqual(cask.count("    run "), 1, cask)
+        self.assertEqual(cask.count("        must_succeed: false\n"), 1, cask)
+        self.assertNotIn("lsregister", cask)
+        self.assertNotIn("mdimport", cask)
 
     def test_macho_architecture_reader(self) -> None:
         x86, arm = 0x01000007, 0x0100000C

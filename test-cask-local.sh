@@ -82,11 +82,8 @@ cask "cruma" do
 
   postflight_steps do
     run "/usr/bin/xattr",
-        args: ["-drs", "com.apple.quarantine", "{{appdir}}/Cruma.app"]
-    run "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
-        args: ["-f", "{{appdir}}/Cruma.app"]
-    run "/usr/bin/mdimport",
-        args: ["{{appdir}}/Cruma.app"]
+        args: ["-drs", "com.apple.quarantine", "{{appdir}}/Cruma.app"],
+        must_succeed: false
   end
 end
 RUBY
